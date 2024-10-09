@@ -66,3 +66,45 @@ from utils.general import (
 )
 
 from utils.loggers import Loggers # for logging
+from utils.loggers.comet.comet_utils import check_comet_resume # for comet resume
+from utils.loss import ComputeLoss # for computing loss
+from utils.metrics import fitness # for fitness computation
+from utils.plots import plot_evolve # for plotting evolution
+from utils.torch_utils import (
+    EarlyStopping,
+    ModelEMA,
+    de_parallel,
+    select_device,
+    smart_DDP,
+    smart_optimizer,
+    smart_resume,
+    torch_distributed_zero_first,
+)
+
+LOCAL_RANK = int(os.getenv('LOCAL_RANK', -1)) # get the local rank
+RANK= int(os.getenv('RANK', -1)) # get the rank
+WORLD_SIZE = int(os.getenv('WORLD_SIZE', 1)) # get the world size
+GIT_INFO = check_git_status() # check the git status
+
+def train(hyp, opt, device, callbacks): # function to train the model
+    save_dir, epochs, batch_size, weights, single_cls, evolve, data, cfg, resume, noval, nosave, workers, freeze= (
+            Path(opt.save_dir),
+            opt.epochs,
+            opt.batch_size,
+            opt.weights,
+            opt.single_cls,
+            opt.evolve,
+            opt.data,
+            opt.cfg,
+            opt.resume,
+            opt.noval,
+            opt.nosave,
+            opt.workers,
+            opt.freeze,
+    )
+    callbacks.run("on_pretrain_routine_start") # run the pretrain routine start callback
+
+def main(opt,callbacks=Callbacks()): # main function
+    
+    # Hyperparameters
+    print('hello')
