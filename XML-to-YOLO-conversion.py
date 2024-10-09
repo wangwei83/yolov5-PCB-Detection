@@ -1,4 +1,8 @@
-# https://blog.csdn.net/weixin_45679938/article/details/118803745
+# Description: This script is used to convert the XML files to YOLO format.
+# Author: wang
+# Date: 2024-10-09
+# Reference: https://blog.csdn.net/weixin_45679938/article/details/118803745
+
 import xml.etree.ElementTree as ET #解析xml文件
 import pickle #序列化和反序列化
 import os #操作系统接口
