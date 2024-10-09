@@ -1,6 +1,9 @@
 # yolov5-PCB-Detection
 
 
+http://www.jinglingbiaozhu.com/
+
+
 conda create -n yolov5
 
 conda activate yolov5
