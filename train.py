@@ -28,7 +28,7 @@ from  tqdm import tqdm # for progress bars
 FILE = Path(__file__).resolve() # get the current file
 ROOT=FILE.parents[0] # get the directory of the file
 if str(ROOT) not in sys.path:  
-    sys.path.insert(0,str(ROOT)) # add the current file to the system path
+    sys.path.append(str(ROOT))  # add ROOT to PATH
 ROOT=Path(os.path.relpath(ROOT,Path.cwd())) # get the relative path of the current file
 
 import val as validate
@@ -45,6 +45,7 @@ from utils.general import (
     check_amp,
     check_dataset,
     check_file,
+    check_git_info,
     check_git_status,
     check_img_size,
     check_requirements,
@@ -104,21 +105,23 @@ def train(hyp, opt, device, callbacks): # function to train the model
     )
     callbacks.run("on_pretrain_routine_start") # run the pretrain routine start callback
 
-    w=save_dir/'weights' # get the weights directory
-    (w.parent if evolve else w).mkdir(parents=True, exist_ok=True) # create the weights directory
-    last, best= w/'last.pt', w/'best.pt' # get the last and best weights
+    # Directories
+    w = save_dir / "weights"  # weights dir
+    (w.parent if evolve else w).mkdir(parents=True, exist_ok=True)  # make dir
+    last, best = w / "last.pt", w / "best.pt"
 
-    if isinstance(hyp,str): # if the hyperparameters are a string
-        with open(hyp,errors="ignore") as f: # open the hyperparameters file
-            hyp = yaml.safe_load(f) # load the hyperparameters
-    
-    LOGGER.info(colorstr("hyperparameters:")+",".join(f"{k}={v}" for k,v in hyp.items())) # log the hyperparameters
-    opt.hyp=hyp.copy() # copy the hyperparameters
+    # Hyperparameters
+    if isinstance(hyp, str):
+        with open(hyp, errors="ignore") as f:
+            hyp = yaml.safe_load(f)  # load hyps dict
+    LOGGER.info(colorstr("hyperparameters: ") + ", ".join(f"{k}={v}" for k, v in hyp.items()))
+    opt.hyp = hyp.copy()  # for saving hyps to checkpoints
 
-    if not evolve: # if not evolving
-        yaml_save(save_dir/'hyp.yaml',hyp)  # save the hyperparameters
-        yaml_save(save_dir/'opt.yaml',vars(opt))    # save the options
-    
+    # Save run settings
+    if not evolve:
+        yaml_save(save_dir / "hyp.yaml", hyp)
+        yaml_save(save_dir / "opt.yaml", vars(opt))
+
     # Loggers
     data_dict=None # initialize the data dictionary
     if RANK in {-1,0}:
@@ -138,26 +141,27 @@ def train(hyp, opt, device, callbacks): # function to train the model
         )  #创建 Loggers 对象，并传递相关参数。
 
         for k in methods(loggers):
-            callbacks.register_action(k,callback=getattr(loggers,k)) # 使用 callbacks.register_action 方法注册该方法。
-        
-        data_dict=loggers.remote_dataset  #获取远程数据集
-        if resume: 
-            weights,epochs,hyp,batch_size=opt.weights,opt.epochs,opt.hyp,opt.batch_size # get the weights, epochs, hyperparameters, and batch size
-        
-    # config
-    plots = not evolve and not opt.noplots # whether to plot
-    cuda= device.type != 'cpu' # whether to use cuda
-    init_seeds(opt.seed+1+RANK,deterministic=True)  #调用 init_seeds 函数。
-    with torch_distributed_zero_first(LOCAL_RANK):
-        data_dict=data_dict or check_dataset(data)
-    
-    train_path,val_path=data_dict["train"],data_dict["val"] #
-    nc=1 if single_cls else int(data_dict["nc"]) #
-    names={0:"item"} if single_cls and len(data_dict["name"])!=1 else data_dict["name"]  #
-    is_coco = isinstance(val_path,str) and val_path.endswith("coco/val2017.txt")
+            callbacks.register_action(k, callback=getattr(loggers, k))
 
-    check_suffix(weights,".pt")  
-    pretrained = weights.endswitch(".pt")
+        # Process custom dataset artifact link
+        data_dict = loggers.remote_dataset
+        if resume:  # If resuming runs from remote artifact
+            weights, epochs, hyp, batch_size = opt.weights, opt.epochs, opt.hyp, opt.batch_size
+
+    # Config
+    plots = not evolve and not opt.noplots  # create plots
+    cuda = device.type != "cpu"
+    init_seeds(opt.seed + 1 + RANK, deterministic=True)
+    with torch_distributed_zero_first(LOCAL_RANK):
+        data_dict = data_dict or check_dataset(data)  # check if None
+    train_path, val_path = data_dict["train"], data_dict["val"]
+    nc = 1 if single_cls else int(data_dict["nc"])  # number of classes
+    names = {0: "item"} if single_cls and len(data_dict["names"]) != 1 else data_dict["names"]  # class names
+    is_coco = isinstance(val_path, str) and val_path.endswith("coco/val2017.txt")  # COCO dataset
+
+    # Model
+    check_suffix(weights, ".pt")  # check weights
+    pretrained = weights.endswith(".pt")
     if pretrained:
         with torch_distributed_zero_first(LOCAL_RANK): #上下文管理器
             weights=attempt_download(weights) 
@@ -179,6 +183,8 @@ def train(hyp, opt, device, callbacks): # function to train the model
 
 
 
+def parse_opt(known=False):
+	return 0
 def main(opt,callbacks=Callbacks()): # main function
     
     # Hyperparameters
