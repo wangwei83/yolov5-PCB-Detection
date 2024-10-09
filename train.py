@@ -65,7 +65,7 @@ from utils.general import (
     yaml_save,
 )
 
-from utils.loggers import Loggers # for logging
+from utils.loggers import LOGGERS,Loggers # for logging
 from utils.loggers.comet.comet_utils import check_comet_resume # for comet resume
 from utils.loss import ComputeLoss # for computing loss
 from utils.metrics import fitness # for fitness computation
@@ -103,6 +103,81 @@ def train(hyp, opt, device, callbacks): # function to train the model
             opt.freeze,
     )
     callbacks.run("on_pretrain_routine_start") # run the pretrain routine start callback
+
+    w=save_dir/'weights' # get the weights directory
+    (w.parent if evolve else w).mkdir(parents=True, exist_ok=True) # create the weights directory
+    last, best= w/'last.pt', w/'best.pt' # get the last and best weights
+
+    if isinstance(hyp,str): # if the hyperparameters are a string
+        with open(hyp,errors="ignore") as f: # open the hyperparameters file
+            hyp = yaml.safe_load(f) # load the hyperparameters
+    
+    LOGGER.info(colorstr("hyperparameters:")+",".join(f"{k}={v}" for k,v in hyp.items())) # log the hyperparameters
+    opt.hyp=hyp.copy() # copy the hyperparameters
+
+    if not evolve: # if not evolving
+        yaml_save(save_dir/'hyp.yaml',hyp)  # save the hyperparameters
+        yaml_save(save_dir/'opt.yaml',vars(opt))    # save the options
+    
+    # Loggers
+    data_dict=None # initialize the data dictionary
+    if RANK in {-1,0}:
+        include_loggers = list(LOGGERS) # include the loggers
+        if getattr(opt,"ndjson_console",False):# if the ndjson console is enabled
+            include_loggers.append("ndjson_console") # include the ndjson console
+        if getattr(opt,"ndjson_file",False): # if the ndjson file is enabled
+            include_loggers.append("ndjson_file")
+        
+        loggers = Loggers(
+            save_dir=save_dir, # save directory
+            weights=weights, # weights
+            opt=opt, # options
+            hyp=hyp, # hyperparameters
+            logger=LOGGER, # logger
+            include=tuple(include_loggers), # include the loggers
+        )  #创建 Loggers 对象，并传递相关参数。
+
+        for k in methods(loggers):
+            callbacks.register_action(k,callback=getattr(loggers,k)) # 使用 callbacks.register_action 方法注册该方法。
+        
+        data_dict=loggers.remote_dataset  #获取远程数据集
+        if resume: 
+            weights,epochs,hyp,batch_size=opt.weights,opt.epochs,opt.hyp,opt.batch_size # get the weights, epochs, hyperparameters, and batch size
+        
+    # config
+    plots = not evolve and not opt.noplots # whether to plot
+    cuda= device.type != 'cpu' # whether to use cuda
+    init_seeds(opt.seed+1+RANK,deterministic=True)  #调用 init_seeds 函数。
+    with torch_distributed_zero_first(LOCAL_RANK):
+        data_dict=data_dict or check_dataset(data)
+    
+    train_path,val_path=data_dict["train"],data_dict["val"] #
+    nc=1 if single_cls else int(data_dict["nc"]) #
+    names={0:"item"} if single_cls and len(data_dict["name"])!=1 else data_dict["name"]  #
+    is_coco = isinstance(val_path,str) and val_path.endswith("coco/val2017.txt")
+
+    check_suffix(weights,".pt")  
+    pretrained = weights.endswitch(".pt")
+    if pretrained:
+        with torch_distributed_zero_first(LOCAL_RANK): #上下文管理器
+            weights=attempt_download(weights) 
+        ckpt = torch.load(weights,map_location="cpu") #
+        model = Model(cfg or ckpt["model"].yaml, ch=3, nc=nc,anchors=hyp.get("anchors")).to(device)
+        exclude = ["anchor"] if (cfg or hyp.get("anchors")) and not resume else []
+        csd = ckpt["model"].float().state_dict()
+        csd= intersect_dicts(csd,model.state_dict(),exclude=exclude)
+        model.load_state_dict(csd,strict=False)
+        LOGGER.info(f"Transferred {len(csd)}/{len(model.state_dict())} items from {weights}")
+    else:
+        model=Model(cfg,ch=3,nc=nc,anchors=hyp.get("anchors")).to(device)
+    amp =check_amp(model)
+
+    #
+    # freeze = 
+
+
+
+
 
 def main(opt,callbacks=Callbacks()): # main function
     
