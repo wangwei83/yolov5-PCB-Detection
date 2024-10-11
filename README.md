@@ -4,6 +4,31 @@
 http://www.jinglingbiaozhu.com/
 
 
+```python
+
+(yolov5) wangwei83@wangwei83-System-Product-Name:~/Desktop/yolov5-PCB-Detection$ nvidia-smi
+Fri Oct 11 23:30:08 2024       
++-----------------------------------------------------------------------------+
+| NVIDIA-SMI 470.256.02   Driver Version: 470.256.02   CUDA Version: 11.4     |
+|-------------------------------+----------------------+----------------------+
+| GPU  Name        Persistence-M| Bus-Id        Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp  Perf  Pwr:Usage/Cap|         Memory-Usage | GPU-Util  Compute M. |
+|                               |                      |               MIG M. |
+|===============================+======================+======================|
+|   0  NVIDIA GeForce ...  Off  | 00000000:01:00.0 Off |                  N/A |
+|  0%   60C    P8    25W / 350W |   5798MiB / 12053MiB |      0%      Default |
+|                               |                      |                  N/A |
++-------------------------------+----------------------+----------------------+
+                                                                               
++-----------------------------------------------------------------------------+
+| Processes:                                                                  |
+|  GPU   GI   CI        PID   Type   Process name                  GPU Memory |
+|        ID   ID                                                   Usage      |
+|=============================================================================|
+|    0   N/A  N/A      1079      G   /usr/lib/xorg/Xorg                  4MiB |
+|    0   N/A  N/A      1770      G   /usr/lib/xorg/Xorg                  4MiB |
++-----------------------------------------------------------------------------+
+(yolov5) wangwei83@wangwei83-System-Product-Name:~/Desktop/yolov5-PCB-Detection$ code
 (yolov5) wangwei83@wangwei83-System-Product-Name:~/Desktop/yolov5-PCB-Detection$ nvcc -V
 nvcc: NVIDIA (R) Cuda compiler driver
 Copyright (c) 2005-2022 NVIDIA Corporation
@@ -35,6 +60,10 @@ Fri Oct 11 23:30:08 2024
 |    0   N/A  N/A      1770      G   /usr/lib/xorg/Xorg                  4MiB |
 +-----------------------------------------------------------------------------+
 (yolov5) wangwei83@wangwei83-System-Product-Name:~/Desktop/yolov5-PCB-Detection$ 
+
+
+
+
 
 
 conda create -n yolov5
