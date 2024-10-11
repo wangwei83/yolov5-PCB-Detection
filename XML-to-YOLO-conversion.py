@@ -57,9 +57,10 @@ for image_set in sets: #遍历训练集、验证集、测试集
     
     image_ids = open('/mnt/smbmount/1_industry_dataset/PCB_train_data/data/ImageSets/%s.txt'%(image_set)).read().strip().split() #读取txt文件
     list_file = open('/mnt/smbmount/1_industry_dataset/PCB_train_data/data/%s.txt'%(image_set), 'w') #打开txt文件
+    
 
     for image_id in image_ids: #遍历所有的xml文件
         list_file.write('/mnt/smbmount/1_industry_dataset/PCB_train_data/data/images/%s.jpg\n'%(image_id))
         convert_annotation(image_id) #将xml文件转换为yolo需要的label文件
         
-    list_file.close() #关闭txt文件
+    list_file.close() #关闭txt文件 
